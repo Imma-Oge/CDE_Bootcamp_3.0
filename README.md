@@ -9,6 +9,8 @@ Because reporting team from each department manually pulls this data everyday, T
 
 Management is frustrated because it would require weeks for reporting experts to manually compoile consistent spreadsheet inordr to make sense of the customers various complaints.as the need for urgent and immediate action s required based on the informatio given by the customers.
 
+## ASSUMPTION/THOUGHT PROCESS
+
 Managementtherefore requires a solution that consolidates these information from customers from the different sources into a ccentral repository system
 
 Because some ata come in more frequent than the others like the call log files, there is need to capture them in ral time or setup a notification channel into the log for quick data capture
