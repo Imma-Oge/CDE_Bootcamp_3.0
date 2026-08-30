@@ -10,6 +10,7 @@ The following assumptions were made to guide the proposed solution design:
 
 #### Business Assumptions
 * Beejan Technologies is a small-to-medium-sized telecommunications company.
+* Beejan does not require ML or predictions to be done downstream
 * Executive management requires **daily** reports to monitor customer complaint trends and service performance.
 * Operations teams require dashboards refreshed **hourly** to identify and respond to high-priority issues.
 * The organization seeks a cost-effective solution that can scale as complaint volumes grow.
