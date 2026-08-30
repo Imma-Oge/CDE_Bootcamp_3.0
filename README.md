@@ -17,11 +17,7 @@ The following assumptions were made to guide the proposed solution design:
 #### Data Assumptions
 * SMS and Website Form submissions are stored within the company's CRM database.
 * Twitter and Call Center Logs contain complaints that require faster visibility due to their operational impact.
-* Customer complaints can be categorized into:
-    * Network Issues
-    * Billing & Payments
-    * Customer Support
-  
+
 ## Design Thinking
 
 The proposed solution is designed to transform fragmented customer complaints into actionable business insights through a centralized and automated data pipeline.
@@ -45,12 +41,12 @@ SMS and Website Form submissions stored within the **CRM database** are processe
 * Pipeline execution is automated through scheduled workflows. Monitoring and alerting mechanisms are implemented to detect failures, missing data and data quality issues.
 * Version control, automated testing, and deployment practices are incorporated to support ongoing maintenance and future enhancements while reducing operational risk.
 
-  #### Beejan Current Architecture versus Proposed Architecture
+## Beejan Current Architecture versus Proposed Architecture
 
-#### Challenges/ Unknown
+## Challenges/ Unknown
 1. Customers may not adhere to the designated complaint channels for specific issues.
 2. Customer identifiers may not be consistently available across all systems.
 3. Real-time processing requirements are not explicitly defined.
 
-#### Conclusion 
+## Conclusion 
 This solution provides Beejan Technologies with a centralized and scalable approach to managing customer complaints, enabling faster response times, improved reporting accuracy, and data-driven decision-making.
