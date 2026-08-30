@@ -42,6 +42,11 @@ SMS and Website Form submissions stored within the **CRM database** are processe
 * Version control, automated testing, and deployment practices are incorporated to support ongoing maintenance and future enhancements while reducing operational risk.
 
 ## Beejan Current Architecture versus Proposed Architecture
+![My Image](upload/diagram_as_is.png)
+
+![My Image](upload/Beejan_conceptual_diagram.png)
+
+
 
 ## Challenges/ Unknown
 1. Customers may not adhere to the designated complaint channels for specific issues.
