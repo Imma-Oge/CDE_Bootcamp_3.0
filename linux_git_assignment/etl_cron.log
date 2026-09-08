@@ -1,0 +1,13 @@
+======= ETL Pipeline started at 2026-09-08 00:00:02 =======
+======= This script is used to perform ETL (Extract, Transform, Load) operations on a csv data file.============
+======= ETL Pipeline loading.=========
+=== raw folder created ===
+=== transformed folder created ===
+=== gold folder created ===
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:01 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:02 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:03 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:04 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:05 --:--:--     0  1 7876k    1 83883    0     0  12406      0  0:10:50  0:00:06  0:10:44 16776  3 7876k    3  247k    0     0  33517      0  0:04:00  0:00:07  0:03:53 52818 27 7876k   27 2151k    0     0   251k      0  0:00:31  0:00:08  0:00:23  450k 79 7876k   79 6280k    0     0   658k      0  0:00:11  0:00:09  0:00:02 1317k100 7876k  100 7876k    0     0   792k      0  0:00:09  0:00:09 --:--:-- 1841k
+======= Data file downloaded and saved to raw folder =======
+======= Performing transformation on the data file and saving to 2023_year_finance.csv file =======
+======= Data transformation completed and saved to transformed folder =======
+======= Transformed file moved to gold folder ========
