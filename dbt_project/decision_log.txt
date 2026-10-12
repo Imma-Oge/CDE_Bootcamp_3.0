@@ -1,0 +1,28 @@
+Decision: CI source-data strategy
+The CI environment will use its own small representative copy of the raw Facebook Ads and Snapchat Ads source data rather than reading directly from production or using already-transformed development models.
+
+Rationale:
+This allows CI to validate the complete dbt transformation path from raw source data through staging, intermediate and final analytical models while maintaining isolation from both development and production. It also prevents CI from requiring direct access to production source data and allows edge cases relevant to automated testing to be represented in a controlled dataset. 
+📌 Decision log — Development access strategy
+Decision: Use the developer's Databricks user identity for development. Inspect existing catalog ownership and privileges before adding explicit grants.
+Rationale: Section 13 provides examples for CI and production but does not prescribe development grants. We will define development access according to the operations dbt needs to perform, while avoiding unnecessary permissions. 
+Rationale: The developer already owns cde_marketing_development. Catalog ownership provides the authority needed to create schemas, so granting the same privileges explicitly would be unnecessary.
+Validation: Catalog ownership confirmed. Actual dbt schema creation remains to be tested. 
+We have already agreed that:
+- The raw schemas will be provisioned separately during source-data ingestion.
+- dbt will manage transformation schemas.
+- CI will use its own small, representative raw dataset.
+- Development, CI, and production will remain in separate catalogs. 
+Decision: Retain dbt's default generate_schema_name behavior rather than implementing a custom naming macro.
+Rationale: This keeps our project aligned with standard dbt behavior, reduces unnecessary configuration, and helps prevent schema-name collisions between developers. 
+📌 Decision log — Raw ingestion architecture
+Proposed decision: Ingest the original Facebook Ads and Snapchat Ads datasets into cde_marketing_production.raw, then provision appropriate development and CI raw datasets from that source.
+Rationale: Establish one authoritative raw-data location while keeping transformation development and CI testing isolated from production writes. 
+📌 Decision log — Confirmed architecture decisions
+Decision	Rationale
+Production-first ingestion	cde_marketing_production.raw will hold the authoritative source datasets
+Airbyte for ingestion	Airbyte will move source data into Databricks; dbt will handle downstream transformations
+Separate development and CI raw datasets	Development and CI can work without modifying authoritative production data
+dbt-managed transformation schemas	dbt will create destination schemas using its default naming convention
+Production Service Principal	Production dbt execution will use a dedicated identity, separate from your developer account
+These decisions are now part of our project design. We can record the implementation details as we complete each step 
