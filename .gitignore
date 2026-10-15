@@ -1,0 +1,16 @@
+# Ignore credentials anywhere in this repository
+**/credentials/
+
+# Ignore Python virtual environments
+**/.venv/
+
+# Ignore environment variable files
+**/.env
+**/.env.*
+
+# Ignore Python cache files
+**/__pycache__/
+*.pyc
+
+# dbt generated logs
+**/logs/
