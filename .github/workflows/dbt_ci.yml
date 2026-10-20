@@ -3,7 +3,7 @@ name: Marketing Data Platform - dbt CI
 on:
   pull_request:
     branches:
-      - main
+      - beejan
     paths:
       - "dbt_project/cde_marketing-data-platform/cde_marketing/**"
       - ".github/workflows/dbt_ci.yml"
