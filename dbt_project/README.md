@@ -1,48 +1,277 @@
 # Marketing Data Platform with Databricks & dbt
 
-## Project Overview
+A production-minded data platform that brings Facebook Ads and Snapchat Ads performance data into one tested, documented analytical model.
 
-This project focuses on designing and building a production-minded Marketing Data Platform that integrates advertising performance data from Facebook Ads and Snapchat Ads into a unified analytical data model.
+## Project overview
 
-The platform uses Databricks for data storage and processing, and dbt for data transformation, testing, and documentation.
+Marketing teams often manage campaigns across several advertising platforms, each with different data structures and reporting interfaces. This project brings Facebook Ads and Snapchat Ads data into Databricks, standardizes it with dbt, and makes it available for consistent analysis of advertising spend, impressions, clicks, and campaign performance.
 
-The goal is to provide a consistent, reliable, and reusable source of marketing performance data that can support reporting, business analysis, and downstream analytical applications.
+The goal is not simply to move files into a warehouse. It is to create a reliable, reusable data product with clear definitions, data quality checks, lineage, environment separation, and an automated validation workflow.
 
-## Business Problem
+## Business problem and objectives
 
-Marketing teams often manage advertising campaigns across multiple platforms, each with its own data structures, naming conventions, and reporting interfaces.
+Without a shared model, marketers must access each platform separately or combine exported files manually. Different field names, identifier structures, and levels of detail make comparisons difficult. The resulting reports are harder to reuse and validate.
 
-In this case, advertising performance data is distributed between Facebook Ads and Snapchat Ads. Marketers must access these platforms separately or manually export and combine datasets to understand overall campaign performance.
+This platform aims to:
 
-This approach presents several challenges:
+- Combine Facebook and Snapchat performance data into a consistent analytical structure.
+- Support spend, impressions, clicks, CTR, CPC, CPM, and performance analysis over time.
+- Preserve enough campaign and ad context to support meaningful drill-downs.
+- Validate data through automated tests and reconciliation.
+- Make the models understandable through dbt documentation and lineage.
+- Separate development, CI, and production workloads, with secure production authentication.
 
-- **Fragmented reporting:** There is no unified view of advertising performance across platforms.
-- **Manual effort:** Extracting, combining, and analyzing data requires additional time.
-- **Inconsistent data structures:** Differences in field names and formats make cross-platform comparisons difficult.
-- **Limited accessibility and reusability:** Other teams cannot easily consume the advertising data for their own analytical needs.
-- **Limited governance and visibility:** The absence of centralized models, documentation, lineage, and automated data quality monitoring reduces trust and maintainability.
+## Architecture
 
-## Project Objectives
+![Marketing data platform architecture](assets/architecture.png)
 
-The primary objective is to develop a governed, tested, and documented marketing data platform that transforms raw advertising data into a unified analytical data product.
+**Implemented data flow:**
 
-Specifically, the project aims to:
+1. **Source:** Nine Facebook and Snapchat CSV files are retrieved from Google Drive.
+2. **Ingestion:** A Python application retrieves the files, processes them in memory with pandas, and loads them as Delta tables into `cde_marketing_production.raw`.
+3. **Transformation:** dbt reads the production raw sources and builds staging, intermediate, and analytical models. Development and CI write their results to their own catalogs.
+4. **Quality and observability:** dbt tests validate the models; Elementary captures run and test information and monitors fact-table volume.
+5. **Validation and promotion:** GitHub Actions runs the CI build on a pull request. Changes are merged after successful checks. Automated production deployment is planned but **not yet implemented**.
+6. **Consumption:** The final models are designed for Databricks SQL, analysts, BI tools, and future analytical applications. BI/AI integrations are potential consumers, not deployed components.
 
-1. Ingest Facebook Ads and Snapchat Ads data into Databricks.
-2. Standardize platform-specific advertising data through dbt transformations.
-3. Develop a unified marketing model that supports consistent cross-platform analysis.
-4. Enable analysis of advertising spend, impressions, clicks, and campaign performance over time.
-5. Support marketing efficiency metrics, including cost per click (CPC) and cost per thousand impressions (CPM).
-6. Implement data quality testing, documentation, lineage, and observability.
-7. Establish separate development, CI, and production environments with appropriate authentication and access controls.
-8. Make the resulting analytical data accessible and reusable through SQL, BI tools, and other downstream analytical applications.
+> **Diagram clarification:** The diagram illustrates the intended end-to-end production promotion path. Its development-side raw area represents **read access to production raw data**, not a copied raw dataset. The production deployment stage is the next implementation step.
 
-## Expected Outcome
+## Technology choices
 
-The intended outcome is a reliable, reusable marketing data model that allows analysts and other data consumers to evaluate advertising performance across Facebook and Snapchat without needing to understand the underlying differences between the source platforms.
+| Component | Technology | Role |
+|---|---|---|
+| Source | Google Drive CSV files | Supplied advertising datasets |
+| Ingestion | Python, pandas | Retrieve and load data without a local file-staging layer |
+| Storage and processing | Databricks, Delta tables | Governed raw and analytical data |
+| Transformation | dbt with Databricks adapter | SQL models, tests, documentation, lineage |
+| Governance | Unity Catalog | Catalogs, schemas, access controls |
+| Observability | Elementary | Test history, model health, volume monitoring |
+| Version control and CI | Git, GitHub Actions | Review and automatically validate changes |
 
-The project also aims to demonstrate production-oriented data engineering practices, including environment isolation, automated validation, monitoring, and maintainable transformation workflows.
+### Why Python ingestion?
+
+The implementation uses Python to retrieve the files from Google Drive and load them into Databricks. The application processes files in memory using pandas instead of keeping an additional staging copy on the Ubuntu machine. Airbyte was considered as an alternative but was not selected for this iteration. The ingestion approach is a full load of the supplied files; an automated incremental ingestion schedule is not claimed.
+
+## Data inventory and ingestion results
+
+The supplied data consists of **nine CSV files** from Facebook Ads and Snapchat Ads. They were loaded into **nine Delta tables** in the production raw schema, preserving the source datasets for downstream transformations.
+
+| Ingestion checkpoint | Verified result |
+|---|---:|
+| Source files | 9 |
+| Raw Delta tables | 9 |
+| Total ingested records | 214,535 |
+| Raw location | `cde_marketing_production.raw` |
+
+The raw layer preserves source-level detail. It is not expected to have the same row count as the unified fact table, because the nine files represent different entities and levels of detail rather than nine equivalent performance datasets.
+
+## Data modeling approach
+
+The dbt project separates transformations into three layers:
+
+| Layer | Purpose | Materialization |
+|---|---|---|
+| **Staging** (`marketing_staging`) | Rename columns, standardize types, normalize missing values, retain source meaning | Views |
+| **Intermediate** (`marketing_intermediate`) | Join platform-specific entities, resolve join cardinality, prepare performance records | Views |
+| **Marts** (`marketing_marts`) | Provide dimensions, a unified performance fact, and a reporting model | Tables |
+
+Views keep development of the cleaning and preparation logic straightforward. Tables materialize the analytical outputs for reuse by consumers. Elementary's own package also creates incremental metadata models; these are separate from the marketing marts.
+
+### Defining the grain before joining
+
+The grain describes what one row represents. Source profiling was used to identify unique business keys before joining performance records to descriptive data.
+
+| Dataset | Confirmed performance grain | Rows |
+|---|---|---:|
+| Facebook performance | One Facebook ad on one date: `(facebook_ad_id, facebook_ad_date)` | 92,300 |
+| Snapchat performance | One Snapchat ad on one date in one country: `(snapchat_ad_id, snapchat_ad_date, snapchat_country)` | 2,809 |
+| Unified performance fact | One platform/ad/date/country combination: `(platform, ad_key, ad_date, country)` | **95,109** |
+
+**Why country matters:** Snapchat performance is reported by country, so removing country from its key would collapse distinct records and potentially distort performance totals. The unified fact retains country in its grain; Facebook rows can have a missing country where the source does not supply an equivalent breakdown.
+
+**Why deduplication matters:** Profiling identified repeated Snapchat adgroup identifiers in the descriptive source. Joining those records directly to performance data could multiply fact rows and inflate spend, clicks, and impressions. The intermediate logic selects a single appropriate adgroup record using `ROW_NUMBER()` before joining.
+
+### Unified model and business rules
+
+`fct_marketing_performance` combines both platforms under consistent column names and platform-prefixed identifiers (`FB_` and `SN_`) to prevent accidental collisions between source ID systems. The model retains the source currency rather than combining monetary values across currencies without conversion.
+
+Key transformation rules include:
+
+- Standardizing source field names and data types.
+- Converting literal missing-value strings such as `'null'` into SQL `NULL` where appropriate.
+- Preserving platform and country context when needed to maintain grain.
+- Preventing one-to-many descriptive joins from duplicating performance records.
+- Calculating CTR, CPC, and CPM from the relevant totals, with safe handling of zero denominators.
+- Keeping EUR and USD spend separate unless a documented exchange-rate conversion is introduced.
+
+The reporting model, `rpt_marketing_performance`, aggregates at **platform × date × currency**. It supports time-based comparisons, but spend across currencies must not be added into a single unconverted amount.
+
+## Reconciliation and data quality
+
+Reconciliation compares the final fact table with the platform performance sources. It checks that transformations and joins preserve the expected row counts and numerical totals.
+
+| Platform | Currency | Fact rows | Spend | Impressions | Clicks |
+|---|---|---:|---:|---:|---:|
+| Facebook | EUR | 26,088 | 2,562,561.2400 | 295,373,593 | 1,158,683 |
+| Facebook | USD | 66,212 | 6,869,536.9900 | 610,075,828 | 4,579,027 |
+| Snapchat | EUR | 2,809 | 30,529.5459 | 33,395,784 | 19,012 |
+| **Total** | **Mixed currencies** | **95,109** | **Not combined** | **938,845,205** | **5,756,722** |
+
+The final fact has **95,109 records** and no duplicates at its defined grain. Currency-specific spend is reconciled independently. The aggregate impression and click totals above are the sum of the three validated groups.
+
+The dbt project includes checks for required fields, unique keys, accepted values, relationships between facts and dimensions, and metric quality rules. These tests are part of `dbt build`, so model validation is repeatable rather than a one-time manual check.
+
+## Documentation, lineage, and observability
+
+Descriptions are maintained alongside dbt sources and models so that a new engineer can inspect where data comes from, what a model represents, and which upstream models it depends on. Static dbt documentation and lineage can be generated from the project.
+
+Elementary is configured to collect dbt test and execution results and to monitor fact-table volume. In development, the observed dashboard showed **30 passing tests, 14 healthy tables, and 17 successful model runs** at the time of capture. The absence of detected anomalies in a single report should not be interpreted as a long-term monitoring guarantee; historical baselines need repeated runs.
+
+## Environment separation and security
+
+| Environment | Catalog | Authentication | Purpose |
+|---|---|---|---|
+| Development | `cde_marketing_development` | Developer personal access token | Build and inspect changes |
+| CI | `cde_marketing_ci` | CI personal access token via GitHub Secrets | Validate pull requests without writing analytical models to production |
+| Production | `cde_marketing_production` | Databricks service principal (OAuth client credentials) | Hold raw data and run approved production transformations |
+
+All three targets use the same Databricks workspace and SQL warehouse connection details, but write to separate catalogs. **Raw source tables live only in the production catalog**. Development and CI receive read access to the required production raw tables; their dbt outputs and Elementary metadata remain in their own catalogs.
+
+### Unity Catalog implementation evidence
+
+The screenshots below show the actual catalog structure used in the project. **Production holds the nine source tables in `raw`; development and CI have their own transformation and Elementary schemas.** The screenshots confirm the catalog and schema layout, while GitHub Actions logs provide separate evidence that the CI models and tests executed successfully.
+
+**CI catalog — isolated dbt and Elementary outputs**
+
+![CI catalog showing marketing staging, intermediate, marts, and Elementary schemas](assets/unity_catalog_ci.png)
+
+*`cde_marketing_ci` contains `marketing_staging`, `marketing_intermediate`, `marketing_marts`, and `marketing_elementary` (alongside Databricks system schemas).*
+
+**Development catalog — workspace for model development**
+
+![Development catalog showing marketing and dbt layer schemas](assets/unity_catalog_development.png)
+
+*`cde_marketing_development` contains the dbt transformation layers and Elementary metadata. The additional `marketing` schema is the configured default schema.*
+
+**Production catalog — shared raw source data**
+
+![Production catalog showing the raw schema](assets/unity_catalog_production.png)
+
+*`cde_marketing_production.raw` is the source location read by development and CI. This screenshot does not imply that production dbt marts have already been deployed.*
+
+**Catalog overview — three separate environments**
+
+![Unity Catalog navigation showing the CI, development, and production catalogs](assets/unity_catalog_overview.png)
+
+*The three catalogs exist separately within the same Databricks metastore. Catalog separation controls where models are written; actual access is governed by Unity Catalog permissions and the identity used to connect.*
+
+Unity Catalog grants control access to catalogs, schemas, and tables. The development and CI tokens currently belong to the same Databricks user, so separate tokens alone do **not** provide independent user-level security boundaries. A dedicated CI service principal is a future hardening improvement. Production is configured to authenticate through a service principal rather than a personal token; an automated production deployment has not yet been validated.
+
+Credentials belong in local environment variables or GitHub Secrets, never in committed configuration files. The checked-in CI profile reads secret values from environment variables.
+
+## GitHub Actions CI: implemented and verified
+
+The repository includes `.github/workflows/dbt_ci.yml`. A pull request from the `dbt` branch into `beejan` triggered an automated Databricks CI run.
+
+The workflow:
+
+1. Checks out the repository and installs Python and the dbt Databricks adapter.
+2. Installs dbt packages, including Elementary.
+3. Uses repository secrets `DATABRICKS_HOST`, `DATABRICKS_HTTP_PATH`, and `DBT_CI_TOKEN`.
+4. Validates connectivity with `dbt debug --target ci`.
+5. Executes `dbt build --target ci`, building models and running tests in the CI catalog.
+
+**Verified GitHub Actions result:** `PASS=82 WARN=0 ERROR=0 SKIP=0`, including **33 data tests** and the Elementary run hook. The job completed successfully, and the pull request was merged into `beejan`.
+
+**CD status:** Automated deployment of approved dbt models to the production target is **not yet implemented**. It remains the next stage; a successful CI run does not by itself mean production models were deployed.
+
+## Repository layout
+
+The marketing dbt project lives within the broader `CDE_Bootcamp_3.0` training repository:
+
+```text
+CDE_Bootcamp_3.0/
+├── .github/
+│   └── workflows/
+│       └── dbt_ci.yml
+└── dbt_project/
+    └── cde_marketing-data-platform/
+        └── cde_marketing/
+            ├── ci_config/
+            │   └── profiles.yml
+            ├── models/
+            │   ├── staging/
+            │   ├── intermediate/
+            │   └── marts/
+            ├── dbt_project.yml
+            ├── packages.yml
+            └── .gitignore
+```
+
+The README references the following images, stored relative to this README in `assets/`:
+
+| Image file | Evidence shown |
+|---|---|
+| `architecture.png` | End-to-end architecture diagram |
+| `unity_catalog_ci.png` | CI schemas |
+| `unity_catalog_development.png` | Development schemas |
+| `unity_catalog_production.png` | Production raw schema |
+| `unity_catalog_overview.png` | Three-catalog overview |
+
+Generated directories (`target/`, `dbt_packages/`, logs, Elementary reports) and local credentials are excluded from version control.
+
+## Reproducing the dbt workflow
+
+**Prerequisites:** Access to the Databricks workspace and SQL warehouse; Unity Catalog permissions for the target catalog and production raw sources; Python and the Databricks dbt adapter; and the nine raw Delta tables already loaded.
+
+From the dbt project directory:
+
+```bash
+cd dbt_project/cde_marketing-data-platform/cde_marketing
+```
+
+Set the environment variables used by your profile (without committing their values), then run:
+
+```bash
+dbt deps
+dbt debug --target dev
+dbt build --target dev
+dbt docs generate --target dev
+```
+
+To validate the CI target locally with the committed secrets-free CI profile:
+
+```bash
+dbt debug --target ci --profiles-dir ci_config
+dbt build --target ci --profiles-dir ci_config
+```
+
+The local development profile may instead be held in `~/.dbt/profiles.yml`. The CI workflow uses `ci_config/profiles.yml` and GitHub Secrets. The production target requires service-principal credentials and the corresponding grants before any production run.
+
+## Business questions supported
+
+The fact and reporting models support analysis of advertising spend, impressions, and clicks by platform and over time, alongside CTR, CPC, and CPM. Campaign dimensions allow more detailed campaign-level analysis. Currency must remain part of spend comparisons until an exchange-rate conversion rule is introduced.
+
+The models are ready for SQL-based analysis and future BI or AI consumption. No deployed BI dashboard or AI agent is claimed as part of this submission.
+
+## Delivery status and next steps
+
+| Deliverable | Status |
+|---|---|
+| Raw Facebook and Snapchat data in Databricks | Completed |
+| Staging, intermediate, and unified marketing models | Completed |
+| Grain, keys, source differences, and reconciliation | Completed |
+| Automated data tests | Completed |
+| dbt documentation and lineage generation | Completed |
+| Elementary integration | Completed |
+| Development and CI environments | Completed |
+| Production catalog and service-principal configuration | Configured; production deployment pending |
+| GitHub Actions pull-request CI | Completed and verified |
+| Automated production deployment (CD) | **Pending** |
+| BI / AI integrations | Future consumption options |
+
+**Next step:** Add a controlled production deployment workflow that uses the service principal to run approved models after merge, and validate its permissions and output. Future improvements include dedicated CI identity, scheduled ingestion, and longer-term Elementary monitoring baselines.
 
 ---
 
-*Documentation status: Initial business overview and objectives. Architecture, implementation details, setup, and operational guidance will be added as the project progresses.*
+*Built as part of the CDE Bootcamp 3.0 capstone assignment. This README documents the implemented solution and distinguishes verified results from planned extensions.*
