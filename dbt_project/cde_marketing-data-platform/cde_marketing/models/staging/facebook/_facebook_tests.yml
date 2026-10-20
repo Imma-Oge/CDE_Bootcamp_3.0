@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: stg_facebook_accounts
+    columns:
+      - name: facebook_account_id
+        data_tests:
+          - not_null
+
+  - name: stg_facebook_campaigns
+    columns:
+      - name: facebook_campaign_id
+        data_tests:
+          - not_null
+
+  - name: stg_facebook_adgroups
+    columns:
+      - name: facebook_adgroup_id
+        data_tests:
+          - not_null
+
+  - name: stg_facebook_ads
+    columns:
+      - name: facebook_ad_id
+        data_tests:
+          - not_null
+
+  - name: stg_facebook_ads_stats
+    columns:
+      - name: facebook_ad_id
+        data_tests:
+          - not_null
+
+      - name: facebook_ad_date
+        data_tests:
+          - not_null

@@ -1,0 +1,151 @@
+
+version: 2
+
+models:
+  - name: dim_ads
+    description: >
+      Unified Facebook and Snapchat advertising dimension.
+      Contains one record per platform-specific ad, identified
+      by a unique FB_ or SN_ prefixed key.
+    columns:
+      - name: ad_key
+        description: "Unique platform-aware advertising identifier."
+        data_tests:
+          - unique
+          - not_null
+      - name: platform
+        description: "Advertising platform: Facebook or Snapchat."
+        data_tests:
+          - not_null
+
+  - name: dim_adgroups
+    description: >
+      Unified advertising ad group dimension containing one
+      record per platform-specific ad group.
+    columns:
+      - name: adgroup_key
+        description: "Unique platform-aware ad group identifier."
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_campaigns
+    description: >
+      Unified advertising campaign dimension containing one
+      record per platform-specific campaign.
+    columns:
+      - name: campaign_key
+        description: "Unique platform-aware campaign identifier."
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_accounts
+    description: >
+      Unified advertising account dimension containing one
+      record per platform-specific account.
+    columns:
+      - name: account_key
+        description: "Unique platform-aware account identifier."
+        data_tests:
+          - unique
+          - not_null
+
+  - name: fct_marketing_performance
+    description: >
+      Unified Facebook and Snapchat advertising performance fact table.
+      Preserves the original reporting grain: platform, ad, date,
+      and country where available. Contains spend, impressions,
+      clicks, and references to advertising dimensions.
+      Original reporting currencies are preserved.
+    columns:
+      - name: platform
+        description: "Source advertising platform."
+        data_tests:
+          - not_null
+
+      - name: ad_key
+        description: "Foreign key referencing the advertising dimension."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_ads')
+                field: ad_key
+
+      - name: adgroup_key
+        description: "Foreign key referencing the ad group dimension."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_adgroups')
+                field: adgroup_key
+
+      - name: campaign_key
+        description: "Foreign key referencing the campaign dimension."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_campaigns')
+                field: campaign_key
+
+      - name: account_key
+        description: "Foreign key referencing the account dimension."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_accounts')
+                field: account_key
+
+      - name: ad_date
+        description: "Date on which advertising performance was reported."
+        data_tests:
+          - not_null
+
+      - name: currency_code
+        description: "Original currency of advertising spend."
+        data_tests:
+          - not_null
+
+      - name: spend
+        description: "Advertising expenditure in the original reporting currency."
+
+      - name: impressions
+        description: "Number of times an advertisement was displayed."
+
+      - name: clicks
+        description: "Number of recorded advertisement clicks."
+
+    data_tests:
+      - elementary.volume_anomalies
+
+  - name: rpt_marketing_performance
+    description: >
+      Business-facing reporting model aggregating advertising
+      performance by platform, reporting date, and currency.
+      Calculates click-through rate (CTR), cost per click (CPC),
+      and cost per thousand impressions (CPM) using safe division.
+    columns:
+      - name: platform
+        description: "Advertising platform."
+        data_tests:
+          - not_null
+
+      - name: ad_date
+        description: "Reporting date."
+        data_tests:
+          - not_null
+
+      - name: currency_code
+        description: "Currency used for spend, CPC, and CPM."
+        data_tests:
+          - not_null
+
+      - name: ctr_percentage
+        description: "Percentage of impressions resulting in clicks."
+
+      - name: cpc
+        description: "Average advertising spend per click."
+
+      - name: cpm
+        description: "Advertising spend per thousand impressions."

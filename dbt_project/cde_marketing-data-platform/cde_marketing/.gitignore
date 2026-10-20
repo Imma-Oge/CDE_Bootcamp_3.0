@@ -3,3 +3,5 @@ target/
 dbt_packages/
 logs/
 .env.local
+
+edr_target/

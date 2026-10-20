@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: stg_snapchat_campaigns
+    columns:
+      - name: snapchat_campaign_id
+        data_tests:
+          - not_null
+
+  - name: stg_snapchat_adgroups
+    columns:
+      - name: snapchat_adgroup_id
+        data_tests:
+          - not_null
+
+  - name: stg_snapchat_ads
+    columns:
+      - name: snapchat_ad_id
+        data_tests:
+          - not_null
+
+  - name: stg_snapchat_ads_stats
+    columns:
+      - name: snapchat_ad_id
+        data_tests:
+          - not_null
+
+      - name: snapchat_ad_date
+        data_tests:
+          - not_null
+
+      - name: snapchat_country
+        data_tests:
+          - not_null

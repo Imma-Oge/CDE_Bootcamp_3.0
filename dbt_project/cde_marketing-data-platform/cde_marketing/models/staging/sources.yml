@@ -1,0 +1,36 @@
+
+version: 2
+
+sources:
+  - name: raw_marketing_sources
+    description: "Raw Facebook and Snapchat advertising data ingested into Databricks."
+    database: cde_marketing_production
+    schema: raw
+
+    tables:
+      - name: facebook_ads_stats
+        description: "Daily Facebook advertising spend, impressions, and clicks."
+
+      - name: facebook_new_acccount_de_randomized
+        description: "Facebook advertising accounts and their currencies."
+
+      - name: facebook_new_adgroup_de_randomized
+        description: "Facebook ad groups and their details."
+
+      - name: facebook_new_ads_de_randomized
+        description: "Facebook ads and their associated ad groups and campaigns."
+
+      - name: facebook_new_campaign_de_randomized
+        description: "Facebook advertising campaigns and their details."
+
+      - name: snapchat_ads_stats
+        description: "Snapchat advertising spend, impressions, and clicks by date and country."
+
+      - name: snapchat_ads_ad_history_new_ad_names
+        description: "Snapchat ads, their names, and associated ad groups."
+
+      - name: snapchat_ads_adgroup_history_new_ad_group_names
+        description: "Snapchat ad groups, campaign relationships, and historical changes."
+
+      - name: snapchat_ads_campaign_history_new_campaign_names
+        description: "Snapchat advertising campaigns and their details."
