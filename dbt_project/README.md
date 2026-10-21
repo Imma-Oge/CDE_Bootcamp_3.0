@@ -121,11 +121,48 @@ The final fact has **95,109 records** and no duplicates at its defined grain. Cu
 
 The dbt project includes checks for required fields, unique keys, accepted values, relationships between facts and dimensions, and metric quality rules. These tests are part of `dbt build`, so model validation is repeatable rather than a one-time manual check.
 
-## Documentation, lineage, and observability
+## Documentation and dbt lineage
 
-Descriptions are maintained alongside dbt sources and models so that a new engineer can inspect where data comes from, what a model represents, and which upstream models it depends on. Static dbt documentation and lineage can be generated from the project.
+A reliable analytical model needs more than correct SQL: other engineers must be able to understand where its data originates, how it changes, and what depends on it. The project uses dbt source and model documentation together with an automatically generated lineage graph to make those relationships visible.
 
-Elementary is configured to collect dbt test and execution results and to monitor fact-table volume. In development, the observed dashboard showed **30 passing tests, 14 healthy tables, and 17 successful model runs** at the time of capture. The absence of detected anomalies in a single report should not be interpreted as a long-term monitoring guarantee; historical baselines need repeated runs.
+![dbt lineage graph showing Facebook and Snapchat transformations through staging, intermediate, and marts](assets/lineage_graph.png)
+
+*Actual dbt lineage graph from the project. The Facebook and Snapchat staging models feed their respective intermediate performance models; these support shared dimensions and the unified performance fact, which in turn feeds the reporting model.*
+
+The graph makes several design decisions easier to inspect:
+
+- **Platform-specific preparation:** Facebook and Snapchat retain separate staging and intermediate models so that differences in source structure and grain can be handled before unification.
+- **Reusable dimensions:** `dim_accounts`, `dim_adgroups`, `dim_ads`, and `dim_campaigns` provide consistent descriptive context.
+- **One analytical performance fact:** `fct_marketing_performance` combines the platform performance records while retaining the defined grain and currency context.
+- **Reporting dependency:** `rpt_marketing_performance` builds on the unified fact instead of reimplementing source joins.
+
+This graph shows model dependencies, not the movement of physical data between catalogs or proof that models have been deployed to production. The architecture diagram above explains the platform-level flow; the lineage graph explains the dbt transformation logic.
+
+## Elementary: data quality and observability
+
+**dbt tests answer whether defined expectations passed; Elementary helps make those test results and model execution history visible in one place.** This matters because a successful transformation alone does not show whether downstream data remains trustworthy over repeated runs.
+
+Elementary is installed as a dbt package and writes its monitoring metadata to the environment-specific `marketing_elementary` schema. The implementation captures dbt execution and test results and includes a volume-monitoring check. This complements, rather than replaces, the project's data tests and source-to-fact reconciliation.
+
+![Elementary dashboard showing test results, table health, monitored tables, and model runs](assets/elementary%20dashboard.png)
+
+*Elementary development dashboard captured on 17 October 2026, with the “Last 90 Days” filter selected.*
+
+### What the dashboard verifies
+
+| Dashboard measure | Observed result | Interpretation |
+|---|---:|---|
+| Test results | 30 passed; 0 warnings, failures, or errors | The tests included in this dashboard snapshot passed |
+| Table health | 14 healthy tables | The dashboard reports 14 tables as healthy |
+| Monitoring coverage | 14 monitored of 26 tables | 12 tables were not monitored in this snapshot; coverage is not complete |
+| Volume checks | 1 passed | One volume test is represented in the results |
+| dbt tests | 29 passed | The remaining passing tests shown are dbt tests |
+| Model runs | 17 successful | The dashboard reports 17 successful model executions |
+| Detected anomalies | 0 | No anomalies were reported for the selected period |
+
+These are **observations from the captured development report**, not a guarantee of future reliability. In particular, zero detected anomalies does not mean every potential data issue is covered: monitoring scope and the historical baseline matter. The later GitHub Actions CI result contains **33 data tests**, which is a separate run and should not be confused with this earlier 30-test dashboard snapshot.
+
+For this project, the quality evidence comes from three complementary checks: **dbt tests** enforce model-level rules, **reconciliation** verifies that joins and transformations preserve performance totals, and **Elementary** provides visibility into test outcomes, model runs, and monitored volume over time.
 
 ## Environment separation and security
 
@@ -195,6 +232,15 @@ CDE_Bootcamp_3.0/
 │   └── workflows/
 │       └── dbt_ci.yml
 └── dbt_project/
+    ├── README.md
+    ├── assets/
+    │   ├── architecture.png
+    │   ├── lineage_graph.png
+    │   ├── elementary dashboard.png
+    │   ├── unity_catalog_ci.png
+    │   ├── unity_catalog_development.png
+    │   ├── unity_catalog_production.png
+    │   └── unity_catalog_overview.png
     └── cde_marketing-data-platform/
         └── cde_marketing/
             ├── ci_config/
@@ -208,11 +254,13 @@ CDE_Bootcamp_3.0/
             └── .gitignore
 ```
 
-The README references the following images, stored relative to this README in `assets/`:
+The README references the following images, stored in `dbt_project/assets/` alongside `dbt_project/README.md`:
 
 | Image file | Evidence shown |
 |---|---|
 | `architecture.png` | End-to-end architecture diagram |
+| `lineage_graph.png` | dbt transformation dependencies |
+| `elementary dashboard.png` | Elementary data quality and monitoring dashboard |
 | `unity_catalog_ci.png` | CI schemas |
 | `unity_catalog_development.png` | Development schemas |
 | `unity_catalog_production.png` | Production raw schema |
@@ -262,8 +310,8 @@ The models are ready for SQL-based analysis and future BI or AI consumption. No 
 | Staging, intermediate, and unified marketing models | Completed |
 | Grain, keys, source differences, and reconciliation | Completed |
 | Automated data tests | Completed |
-| dbt documentation and lineage generation | Completed |
-| Elementary integration | Completed |
+| dbt documentation and lineage generation | Completed; lineage screenshot included |
+| Elementary integration | Completed; dashboard evidence included |
 | Development and CI environments | Completed |
 | Production catalog and service-principal configuration | Configured; production deployment pending |
 | GitHub Actions pull-request CI | Completed and verified |
